@@ -16,7 +16,7 @@ source = {
 }
 
 description = {
-  summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
+  summary = "Kong plugin to transform the request.",
   homepage = "http://getkong.org",
   license = "Apache 2.0"
 }
