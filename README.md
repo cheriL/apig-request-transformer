@@ -1,7 +1,9 @@
 inspur-request-transformer
+===
 Kong plugin to transform the request
 
 Configuration
+---
 Configure this plugin on a Route by adding this section do your declarative configuration file:
 plugins:
 - name: apig-request-transformer
@@ -22,6 +24,7 @@ plugins:
     -query:key4:value2
 
 Parameters
+---
 name apig-request-transformer
 config.httpMethod Changes the HTTP method for the upstream request.
 config.backendContentType Only support "application/json" currently
@@ -32,7 +35,7 @@ config.replace  List of parameter mappings.
 config.add   List of constants.
 
 Examples
-
+---
 declarative configuration file:
 plugins:
 - name: apig-request-transformer
