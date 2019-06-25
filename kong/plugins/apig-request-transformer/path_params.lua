@@ -1,30 +1,58 @@
 local _M = {}
 
-function _M.parse_params(request_path, real_path, array)
-    local params_value_array = {}
+local function reverse_table(tab)
+    local revtab = {}
+    for k, v in pairs(tab) do
+        revtab[v] = k
+    end
+    return revtab
+end
 
-    local fake_path = request_path
-    local params_key_array = array
-    if not fake_path or not next(params_key_array) then
+local function encodeURI(s)
+    s = string.gsub(s, "([^%w%.%- ])", function(c) return string.format("%%%02X", string.byte(c)) end)
+    return string.gsub(s, " ", "+")
+end
+
+local function decodeURI(s)
+    s = string.gsub(s, '%%(%x%x)', function(h) return string.char(tonumber(h, 16)) end)
+    return s
+end
+
+function _M.parse_params(request_path, real_path, param_array)
+    if not request_path or not next(param_array) then
         return
     end
-    
-    local pattern = fake_path
 
-    for i = 1, #params_key_array do
-        local param_key = '%[' .. params_key_array[i] .. '%]'
-        pattern = string.gsub(pattern, param_key, "([^/]+)")
+    local params_map = {}
+    local key_list = {}
+    local value_list = {}
+
+    --参数key的list
+    for k in string.gmatch(request_path, "([^/]+)") do
+        table.insert(key_list, k)
     end
 
-    for i = 1, #params_key_array do
-        local param_key = params_key_array[i]
-        params_value_array[param_key] = string.match(real_path, pattern)
-        if params_value_array[param_key] then
-            pattern = string.gsub(pattern, "%(%[%^%/%]%+%)", params_value_array[param_key], 1)
+    --翻转key_list
+    key_list = reverse_table(key_list)
+
+    --提取的value的list
+    for v in string.gmatch(real_path, "([^/]+)") do
+        local str = v
+        if string.find(str, "%%") ~= nil then
+            str = decodeURI(str)
         end
+        table.insert(value_list, str)
     end
 
-    return params_value_array
+    for i = 1, #param_array do
+        local param = param_array[i]
+        local pattern = "[" .. param .. "]"
+        local pos = key_list[pattern]
+        params_map[param] = value_list[pos]
+    end
+
+    return params_map
 end
+
 
 return _M
