@@ -46,7 +46,7 @@ end
 
 local function get_content_type(content_type)
     if content_type == nil then
-        return
+        return nil
     end
 
     content_type = lower(content_type)
@@ -60,6 +60,8 @@ local function get_content_type(content_type)
     if find(content_type, "multipart/form-data", nil, true) then
         return MULTIPART
     end
+
+    return nil
 end
 
 local function iter(config_array)
@@ -132,11 +134,11 @@ Remark:     value为可选参数。opt == 1时传入
 ********************************************************************--]]
 local function change_head_value(opt, headers, key, value)
     local val
-    local clear_header = kong.service.request.clear_header
+    --local clear_header = kong.service.request.clear_header
     if opt == 0 then
         val = headers[key]
         headers[key] = nil
-        clear_header(key)
+        --clear_header(key)
 
         return headers, val
     elseif opt == 1 then
@@ -201,25 +203,23 @@ local function set_body_value(key, value, body, content_type)
     return body
 end
 
-local function transform_param(conf)
-    local backend_content_type --配置中 转换后的Content-Type
+local function transform_param(ori_table, trans_table, conf)
+    local headers = ori_table.headers
+    local querys = ori_table.querys
+    local path_params = path_params_mgr.parse_params(conf.requestPath, ori_table.path, conf.pathParams)
+
     local backend_path = conf.backendPath   --backend path
-
-    local headers = kong.request.get_headers()
-    local querys = kong.request.get_query()
-    local path_params = path_params_mgr.parse_params(conf.requestPath, kong.request.get_path(), conf.pathParams)
-
-    backend_content_type = get_content_type(conf.backendContentType)
+    local backend_content_type = get_content_type(conf.backendContentType) --转换后的Content-Type
     if backend_content_type ~= nil then
         headers = change_head_value(1, headers, CONTENT_TYPE, conf.backendContentType)
     end
-
+    
     headers = change_head_value(1, headers, HOST, nil)
 
     local replace  = 0 < #conf.replace
     local add = 0 < #conf.add
     if not replace and not add then
-        return 
+        return trans_table
     end
 
     --参数映射
@@ -231,43 +231,39 @@ local function transform_param(conf)
     headers.host = nil
     for req_param_pos, req_param, backend_param_pos, backend_param in iter(conf.replace) do
         if req_param_pos and req_param and backend_param_pos and backend_param then
-            --提取参数值
-            local pos1 = lower(req_param_pos)           
-            local value
-
-            if pos1 == QUERY then
-                querys, value = change_query_value(0, querys, req_param)
-
-                if not query_changed then 
-                    query_changed = true
-                end        
-            elseif pos1 == HEAD then
-                headers, value = change_head_value(0, headers, req_param)           
-            elseif pos1 == PATH then
-                if type(path_params) == "table" and next(path_params) then
-                    value = path_params[req_param]
+            while true do
+                local value
+                --提取参数值
+                local pos1 = lower(req_param_pos)
+                if pos1 == QUERY then
+                    querys, value = change_query_value(0, querys, req_param)                    
+                    if not query_changed then query_changed = true end        
+                elseif pos1 == HEAD then
+                    headers, value = change_head_value(0, headers, req_param)           
+                elseif pos1 == PATH then
+                    if type(path_params) == "table" and next(path_params) then
+                        value = path_params[req_param]
+                    end
                 end
+
+                if value == nil then break end --跳出while true
+
+                --映射参数值
+                local pos2 = lower(backend_param_pos)
+                if pos2 == BODY then
+                    body_json = set_body_value(backend_param, value, body_json, backend_content_type) 
+                elseif pos2 == HEAD then
+                    headers = change_head_value(1, headers, backend_param, value)
+                elseif pos2 == QUERY then
+                    querys = change_query_value(1, querys, backend_param, value)
+                    if not query_changed then query_changed = true end 
+                elseif pos2 == PATH then
+                    backend_path = gsub(backend_path, '%['.. backend_param .. '%]', value)
+                    if not path_changed then path_changed = true end
+                end
+                
+                break --跳出while true
             end
-
-            --设置参数值
-            local pos2 = lower(backend_param_pos)
-            if pos2 == BODY then
-                body_json = set_body_value(backend_param, value, body_json, backend_content_type) 
-            elseif pos2 == HEAD then
-                headers = change_head_value(1, headers, backend_param, value)
-            elseif pos2 == QUERY then
-                querys = change_query_value(1, querys, backend_param, value)
-
-                if not query_changed then 
-                    query_changed = true
-                end 
-            elseif pos2 == PATH then
-                backend_path = gsub(backend_path, '%['.. backend_param .. '%]', value)
-
-                if not path_changed then 
-                    path_changed = true
-                end 
-            end        
         end
     end
 
@@ -277,17 +273,13 @@ local function transform_param(conf)
         new_body_raw = cjson.encode(body_json) 
     end
     if new_body_raw ~= nil then
-        kong.service.request.set_raw_body(new_body_raw)
+        trans_table.body = new_body_raw
         headers = change_head_value(1, headers, CONTENT_LENGTH, #new_body_raw)
     else
         --透传
-        local request_body = kong.request.get_raw_body()
-        if request_body ~= nil then
-            kong.service.request.set_raw_body(request_body)
-        end
+        trans_table.body = ori_table.body
     end
 
-    kong.log.debug(new_body_raw)
     --常量参数
     for i = 1, #conf.add do
         local pos, key, value = conf.add[i]:match("^([^:]+):([^:]+):(.+)$")
@@ -301,31 +293,30 @@ local function transform_param(conf)
         end
     end
     
-    kong.service.request.set_headers(headers)
+    trans_table.headers = headers
     if query_changed then
-        kong.service.request.set_query(querys)
+        trans_table.querys = querys
     end
     if path_changed then
-        kong.service.request.set_path(backend_path)
+        trans_table.path = backend_path
     end
+
+    return trans_table
 end
 
-local function transform_method(conf)
-    if not conf.httpMethod then
-        return
+function _M.execute(ori_table, conf)
+    local trans_table = {}
+    --trans method
+    if conf.httpMethod then
+        local method = upper(conf.httpMethod)
+        if method ~= ori_table.method then
+            trans_table.method = method
+        end
     end
-  
-    local method = upper(conf.httpMethod)
-    if method ~= kong.request.get_method() then
-        kong.service.request.set_method(method)
-    end
-end
 
-function _M.execute(conf)
-    kong.log.debug("[apig-request-transformer] begin execute")
-    transform_method(conf)
-    transform_param(conf)
-    kong.log.debug("[apig-request-transformer] execute over")
+    trans_table = transform_param(ori_table, trans_table, conf)
+
+    return trans_table
 end
   
 return _M
