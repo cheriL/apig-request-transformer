@@ -9,10 +9,40 @@ end
 
 function apigRequestTransformerHandler:access(conf)
     apigRequestTransformerHandler.super.access(self)
-    access.execute(conf)
+
+    local start_time = os.clock()
+
+    local request_table = { 
+        method = kong.request.get_method(),
+        headers = kong.request.get_headers(),
+        querys = kong.request.get_query(),
+        path = kong.request.get_path(),
+        body = kong.request.get_raw_body()
+    }
+
+    local transformed_request_table = access.execute(request_table, conf)
+
+    if transformed_request_table.method then
+        kong.service.request.set_method(transformed_request_table.method)
+    end
+    if transformed_request_table.headers then
+        kong.service.request.set_headers(transformed_request_table.headers)
+    end
+    if transformed_request_table.querys then
+        kong.service.request.set_query(transformed_request_table.querys)
+    end
+    if transformed_request_table.body then
+        kong.service.request.set_raw_body(transformed_request_table.body)
+        kong.log.debug(transformed_request_table.body)
+    end
+    if transformed_request_table.path then
+        kong.service.request.set_path(transformed_request_table.path)
+    end
+
+    kong.log.debug("[apig-request-transformer] spend time : " .. os.clock() - start_time .. ".")
 end
 
-apigRequestTransformerHandler.PRIORITY = 802
-apigRequestTransformerHandler.VERSION = "1.0.0"
+apigRequestTransformerHandler.PRIORITY = 1999
+apigRequestTransformerHandler.VERSION = "0.2.0"
 
 return apigRequestTransformerHandler
