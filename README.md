@@ -10,12 +10,12 @@ Kong plugin to transform the request.
 apig-request-transformer
 ├─ apig-request-transformer-0.2.0-1.rockspec  //插件使用luarocks安装卸载，rockspec是插件包的安装描述文件
 └─ kong
-    └ plugins
-            └ apig-request-transformer
-                ├─ handler.lua //基础模块，封装openresty的不同阶段的调用接口
-                ├─ schema.lua //配置模块，定义插件的配置
-                ├─ access.lua //access阶段的处理模块
-                └─ path_params.lua //path参数处理模块
+   └─ plugins
+      └─ apig-request-transformer
+         ├─ handler.lua //基础模块，封装openresty的不同阶段的调用接口
+         ├─ schema.lua //配置模块，定义插件的配置
+         ├─ access.lua //access阶段的处理模块
+         └─ path_params.lua //path参数处理模块
 ```
 ### 配置说明
 这里对schema模块的配置项进行说明。
