@@ -29,7 +29,8 @@ config.pathParams 请求路径中的参数组成的列表
 config.replace 参数映射表
 config.add 参数附加表
 ```
-###Example:
+
+### Example:
 
 *declarative configuration file:*
 ```
@@ -69,7 +70,7 @@ Content-Length: 139
 }
 ```
 
-###Installation：
+### Installation：
 
 ```
 $ git clone https://github.com/cheriL/apig-request-transformer /opt/kong/plugins 
