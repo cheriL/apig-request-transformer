@@ -13,7 +13,6 @@ local MULTIPART = "multipart"
 local HEAD = "head"
 local QUERY = "query"
 local PATH = "path"
-local BODY = "body"
 
 local ngx = ngx
 local kong = kong
@@ -136,15 +135,18 @@ local function change_head_value(opt, headers, key, value)
     local val
     --local clear_header = kong.service.request.clear_header
     if opt == 0 then
-        val = headers[key]
-        headers[key] = nil
-        --clear_header(key)
+      val = headers[key]
+      headers[key] = nil
+      --clear_header(key)
 
-        return headers, val
+      return headers, val
     elseif opt == 1 then
+      local temp_value = headers[key]
+      if temp_value == nil then
         headers[key] = value --暂不考虑header里面重名key情况
+      end
 
-        return headers
+      return headers
     end
 end
 
@@ -166,14 +168,17 @@ Remark:     value为可选参数。opt == 1时传入
 local function change_query_value(opt, querys, key, value)
     local val
     if opt == 0 then
-        val = querys[key]
-        querys[key] = nil
+      val = querys[key]
+      querys[key] = nil
 
-        return querys, val
+      return querys, val
     elseif opt == 1 then
+      local temp_value = querys[key]
+      if temp_value == nil then
         querys[key] = value
+      end
 
-        return querys
+      return querys
     end
 end
 
@@ -192,15 +197,16 @@ Return:
 Remark: 
 ********************************************************************--]]
 local function set_body_value(key, value, body, content_type)
-    if content_type == JSON then
-        body = set_json_value(body, key, value)
-    --[[elseif content_type == FORM then
-        if type(body) == "table" then
-            body[key] = value
-        end]]--
+  --[[
+  if content_type == JSON then
+  elseif content_type == FORM then
+    if type(body) == "table" then
+      body[key] = value
     end
+  end
 
-    return body
+  return body
+  --]]
 end
 
 local function transform_param(ori_table, trans_table, conf)
@@ -222,13 +228,25 @@ local function transform_param(ori_table, trans_table, conf)
         return trans_table
     end
 
-    --参数映射
     local query_changed
     local path_changed
 
-    local body_json
+    --常量参数及默认值
+    for i = 1, #conf.add do
+      local pos, key, value = conf.add[i]:match("^([^:]+):([^:]+):(.+)$")
+      if pos == HEAD then
+        headers = change_head_value(1, headers, key, value)
+      elseif pos == QUERY then
+        querys = change_query_value(1, querys, key, value)
+        if not query_changed then
+          query_changed = true
+        end
+      end
+    end
 
     headers.host = nil
+
+    --参数映射
     for req_param_pos, req_param, backend_param_pos, backend_param in iter(conf.replace) do
         if req_param_pos and req_param and backend_param_pos and backend_param then
             while true do
@@ -250,45 +268,17 @@ local function transform_param(ori_table, trans_table, conf)
 
                 --映射参数值
                 local pos2 = lower(backend_param_pos)
-                if pos2 == BODY then
-                    body_json = set_body_value(backend_param, value, body_json, backend_content_type) 
-                elseif pos2 == HEAD then
-                    headers = change_head_value(1, headers, backend_param, value)
+                if pos2 == HEAD then
+                    headers[backend_param] = value
                 elseif pos2 == QUERY then
-                    querys = change_query_value(1, querys, backend_param, value)
+                    querys[backend_param] = value
                     if not query_changed then query_changed = true end 
                 elseif pos2 == PATH then
-                    backend_path = gsub(backend_path, '%['.. backend_param .. '%]', value)
+                    backend_path = gsub(backend_path, '{'.. backend_param .. '}', value)
                     if not path_changed then path_changed = true end
                 end
                 
                 break --跳出while true
-            end
-        end
-    end
-
-    --body
-    local new_body_raw
-    if backend_content_type == JSON then
-        new_body_raw = cjson.encode(body_json) 
-    end
-    if new_body_raw ~= nil then
-        trans_table.body = new_body_raw
-        headers = change_head_value(1, headers, CONTENT_LENGTH, #new_body_raw)
-    else
-        --透传
-        trans_table.body = ori_table.body
-    end
-
-    --常量参数
-    for i = 1, #conf.add do
-        local pos, key, value = conf.add[i]:match("^([^:]+):([^:]+):(.+)$")
-        if pos == HEAD then
-            headers = change_head_value(1, headers, key, value)
-        elseif pos == QUERY then
-            querys = change_query_value(1, querys, key, value)
-            if not query_changed then 
-                query_changed = true
             end
         end
     end
