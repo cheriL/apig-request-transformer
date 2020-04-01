@@ -1,4 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
+--local validate_header_name = require("kong.tools.utils").validate_header_name
 
 --add table define      --[head,query]:param:value
 local constant_params_array = {
@@ -7,7 +8,7 @@ local constant_params_array = {
   elements = { type = "string", match = "^[^:]+:[^:]+:.*$" },
 }
 
---replace table define    --head:param1;body:json1.json2.param2
+--replace table define    --head:param1;query:param2
 local params_map_array = {
   type = "array",
   default = {},
@@ -21,6 +22,7 @@ local params_request_path = {
   elements = { type = "string", match = "^[^/]+$" },
 }
 
+--replace配置不再支持body.涉及到body的转换使用 apig-json-creator
 return {
   name = "apig-request-transformer",
   fields = {
@@ -33,7 +35,7 @@ return {
           { backendContentType = { type = "string" } }, --"application/json"
           { requestPath = { type = "string" } },
           { backendPath = { type = "string" } },
-          { pathParams = params_request_path },     
+          { pathParams = params_request_path },  --请求path中的参数         
           { replace = params_map_array },
           { add  = constant_params_array },
         }
