@@ -1,64 +1,64 @@
-inspur-request-transformer
-===
-Kong plugin to transform the request
+# apig-request-transformer
+Kong plugin to transform the request.
 
-Configuration
----
-Configure this plugin on a Route by adding this section do your declarative configuration file:<br>
-plugins:<br>
-- name: apig-request-transformer<br>
-  route: { route }<br>
-  config:<br>
-    httpMethod: POST<br>
-    backendContentType: application/json<br>
-    replace:<br>
-    - query:param1;head:key1<br>
-    - head:param2;query:key2<br>
-    - head:id;body:id<br>
-    - head:sortAs;body:aortAs<br>
-    - head:para;body:glossDef.para<br>
-    - head:glossSeeAlso1;body:glossDef.glossSeeAlso<br>
-    - head:glossSeeAlso2;body:glossDef.glossSeeAlso<br>
-    add:<br>
-    - head:key3:value1<br>
-    -query:key4:value2<br>
+请求参数转换插件是对客户端发起的请求类型及报文内的参数进行修改，处理在客户端请求经过网关到上游服务器之间，涉及到的参数位置有head,query,path(uri)
 
-Parameters
----
-name apig-request-transformer<br>
-config.httpMethod Changes the HTTP method for the upstream request.<br>
-config.backendContentType Only support "application/json" currently<br>
-config.requestPath The request path with parameters.<br>
-config.backendPath  The upstream request with parameters.<br>
-config.pathParams  List of parameters from config.requestPath.<br>
-config.replace  List of parameter mappings.<br>
-config.add   List of constants.<br>
+## 代码模块
+### 目录结构
 
-Examples
----
-declarative configuration file:<br>
-plugins:<br>
-- name: apig-request-transformer<br>
-  config:<br>
-    httpMethod: POST<br>
-    backendContentType: application/json<br>
-    replace:<br>
-    - head:id;body:id<br>
-    - head:sortAs;body:aortAs<br>
-    - head:para;body:glossDef.para<br>
-    - query:glossSeeAlso1;body:glossDef.glossSeeAlso<br>
-    - query:glossSeeAlso2;body:glossDef.glossSeeAlso<br>
+```
+apig-request-transformer
+├─ apig-request-transformer-0.2.0-1.rockspec  //插件使用luarocks安装卸载，rockspec是插件包的安装描述文件
+└─ kong
+    └ plugins
+            └ apig-request-transformer
+                ├─ handler.lua //基础模块，封装openresty的不同阶段的调用接口
+                ├─ schema.lua //配置模块，定义插件的配置
+                ├─ access.lua //access阶段的处理模块
+                └─ path_params.lua //path参数处理模块
+```
+### 配置说明
+这里对schema模块的配置项进行说明。
 
-request code:<br>
-GET     /example?glossSeeAlso1=GML&glossSeeAlso2=XML   HTTP/1.1<br>
-id: x-id-example<br>
-sortAs: SGML<br>
-para: A meta-markup language<br>
+```
+config.httpMethod 修改请求的类型
+config.backendContentType 修改请求head里Content-Type字段
+config.requestPath 控制台下发的api请求路径
+config.backendPath 控制台下发的上游服务器路径
+config.pathParams 请求路径中的参数组成的列表
+config.replace 参数映射表
+config.add 参数附加表
+```
+example:
 
-transformed request code:<br>
-POST     /example   HTTP/1.1<br>
-Content-Type: application/json<br>
-Content-Length: 139<br>
+*declarative configuration file:*
+```
+plugins:
+- name: apig-request-transformer
+  config:
+    httpMethod: POST
+    backendContentType: application/json
+    replace:
+    - head:id;body:id
+    - head:sortAs;body:aortAs
+    - head:para;body:glossDef.para
+    - query:glossSeeAlso1;body:glossDef.glossSeeAlso
+    - query:glossSeeAlso2;body:glossDef.glossSeeAlso
+```
+
+*request code:*
+```
+GET     /example?glossSeeAlso1=GML&glossSeeAlso2=XML   HTTP/1.1
+id: x-id-example
+sortAs: SGML
+para: A meta-markup language
+```
+
+*transformed request code:*
+```
+POST     /example   HTTP/1.1
+Content-Type: application/json
+Content-Length: 139
 {
 	"id": "x-id-example",
 	"sortAs": "SGML",
@@ -67,3 +67,5 @@ Content-Length: 139<br>
 		"glossSeeAlso": ["GML", "XML"]
 	}
 }
+```
+
