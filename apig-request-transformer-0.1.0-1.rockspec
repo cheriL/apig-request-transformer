@@ -7,17 +7,17 @@ version = "0.1.0-1"               -- TODO: renumber, must match the info in the 
 
 -- TODO: This is the name to set in the Kong configuration `plugins` setting.
 -- Here we extract it from the package name.
-local pluginName = package:match("^(.+)$")
+local pluginName = package:match("^(.+)$")  -- "myPlugin"
 
 supported_platforms = {"linux", "macosx"}
 source = {
-  url = "https://github.com/cheriL/inspur-request-transformer",
+  url = "http://github.com/Kong/kong-plugin.git",
   tag = "0.1.0"
 }
 
 description = {
-  summary = "Kong plugin to transform the request.",
-  homepage = "https://github.com/cheriL/inspur-request-transformer",
+  summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
+  homepage = "http://getkong.org",
   license = "Apache 2.0"
 }
 
