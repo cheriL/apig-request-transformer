@@ -38,6 +38,7 @@ function _M.parse_params(request_path, real_path, param_array)
     --提取的value的list
     for v in string.gmatch(real_path, "([^/]+)") do
         local str = v
+        --如果参数值经过urlEncode处理，则进行urlDecode.(转换后的请求到kong时也会被urlEncode)
         if string.find(str, "%%") ~= nil then
             str = decodeURI(str)
         end
@@ -46,7 +47,7 @@ function _M.parse_params(request_path, real_path, param_array)
 
     for i = 1, #param_array do
         local param = param_array[i]
-        local pattern = "[" .. param .. "]"
+        local pattern = "{" .. param .. "}"
         local pos = key_list[pattern]
         params_map[param] = value_list[pos]
     end
