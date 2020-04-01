@@ -1,9 +1,9 @@
 # apig-request-transformer
-Kong plugin to transform the request.
+Transform the request sent by a client on the fly on Kong, before hitting the upstream server.
+The plugin implements parameter transformations and additions of various positions.
 
 请求参数转换插件是对客户端发起的请求类型及报文内的参数进行修改，处理在客户端请求经过网关到上游服务器之间，涉及到的参数位置有head,query,path(uri)
 
-## 代码模块
 ### 目录结构
 
 ```
@@ -29,7 +29,7 @@ config.pathParams 请求路径中的参数组成的列表
 config.replace 参数映射表
 config.add 参数附加表
 ```
-example:
+###Example:
 
 *declarative configuration file:*
 ```
@@ -69,3 +69,10 @@ Content-Length: 139
 }
 ```
 
+###Installation：
+
+```
+$ git clone https://github.com/cheriL/apig-request-transformer /opt/kong/plugins 
+$ cd /opt/kong/plugins/apig-request-transformer 
+$ luarocks make
+```
