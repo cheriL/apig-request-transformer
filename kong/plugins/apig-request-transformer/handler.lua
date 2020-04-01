@@ -16,8 +16,7 @@ function apigRequestTransformerHandler:access(conf)
         method = kong.request.get_method(),
         headers = kong.request.get_headers(),
         querys = kong.request.get_query(),
-        path = kong.request.get_path(),
-        body = kong.request.get_raw_body()
+        path = kong.request.get_path()
     }
 
     local transformed_request_table = access.execute(request_table, conf)
@@ -30,10 +29,6 @@ function apigRequestTransformerHandler:access(conf)
     end
     if transformed_request_table.querys then
         kong.service.request.set_query(transformed_request_table.querys)
-    end
-    if transformed_request_table.body then
-        kong.service.request.set_raw_body(transformed_request_table.body)
-        kong.log.debug(transformed_request_table.body)
     end
     if transformed_request_table.path then
         kong.service.request.set_path(transformed_request_table.path)
