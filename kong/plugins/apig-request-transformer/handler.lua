@@ -1,7 +1,5 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local access = require "kong.plugins.apig-request-transformer.access"
-local kong = kong
-local ngx = ngx
 
 local apigRequestTransformerHandler = BasePlugin:extend()
 
@@ -12,9 +10,9 @@ end
 function apigRequestTransformerHandler:access(conf)
     apigRequestTransformerHandler.super.access(self)
 
-    local start_time = ngx.now()
+    local start_time = os.clock()
 
-    local request_table = {
+    local request_table = { 
         method = kong.request.get_method(),
         headers = kong.request.get_headers(),
         querys = kong.request.get_query(),
@@ -36,8 +34,7 @@ function apigRequestTransformerHandler:access(conf)
         kong.service.request.set_path(transformed_request_table.path)
     end
 
-    ngx.update_time()
-    kong.log.debug("[apig-request-transformer] spend time : ", (ngx.now() - start_time), ".")
+    kong.log.debug("[apig-request-transformer] spend time : " .. os.clock() - start_time .. ".")
 end
 
 apigRequestTransformerHandler.PRIORITY = 1999
