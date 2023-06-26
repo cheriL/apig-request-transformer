@@ -146,19 +146,17 @@ local function transform_param(ori_table, trans_table, conf)
         return trans_table
     end
 
-    local query_changed
-    local path_changed
+    local query_changed = false
+    local path_changed = false
 
     --常量参数及默认值
     for i = 1, #conf.add do
       local pos, key, value = conf.add[i]:match("^([^:]+):([^:]+):(.+)$")
       if pos == HEAD then
-        headers = change_head_value(1, headers, key, value)
+          headers = change_head_value(1, headers, key, value)
       elseif pos == QUERY then
-        querys = change_query_value(1, querys, key, value)
-        if not query_changed then
+          querys = change_query_value(1, querys, key, value)
           query_changed = true
-        end
       end
     end
 
@@ -173,7 +171,7 @@ local function transform_param(ori_table, trans_table, conf)
                 local pos1 = lower(req_param_pos)
                 if pos1 == QUERY then
                     querys, value = change_query_value(0, querys, req_param)
-                    if not query_changed then query_changed = true end
+                    query_changed = true
                 elseif pos1 == HEAD then
                     headers, value = change_head_value(0, headers, req_param)
                 elseif pos1 == PATH then
@@ -190,10 +188,10 @@ local function transform_param(ori_table, trans_table, conf)
                     headers[backend_param] = value
                 elseif pos2 == QUERY then
                     querys[backend_param] = value
-                    if not query_changed then query_changed = true end
+                    query_changed = true
                 elseif pos2 == PATH then
                     backend_path = gsub(backend_path, '{'.. backend_param .. '}', value)
-                    if not path_changed then path_changed = true end
+                    path_changed = true
                 end
 
                 break --跳出while true
